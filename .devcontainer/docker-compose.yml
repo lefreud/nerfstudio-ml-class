@@ -3,10 +3,7 @@ version: "3.8"
 services:
   nerfstudio:
     shm_size: '12gb'
-    image: nerfstudio:latest
-    build:
-      context: ..
-      dockerfile: ./Dockerfile
+    image: lanternerds/nerfstudio-hdr:latest
     stdin_open: true
     tty: true
     environment:
@@ -18,7 +15,6 @@ services:
       - ../:/workspace/
       - /tmp/.X11-unix:/tmp/.X11-unix
     working_dir: /workspace/
-    command: /bin/bash
     deploy:
       resources:
         reservations:

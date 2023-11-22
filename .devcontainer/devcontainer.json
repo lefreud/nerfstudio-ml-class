@@ -4,6 +4,7 @@
     "service": "nerfstudio",
     "workspaceFolder": "/workspace",
     "shutdownAction": "stopCompose",
+    "remoteUser": "user",
     "extensions": [
         "mutantdino.resourcemonitor",
         "ms-azuretools.vscode-docker",
