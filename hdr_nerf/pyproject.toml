@@ -1,14 +1,13 @@
-"""pyproject.toml"""
-
 [project]
 name = "hdr-nerf"
+version = "0.0.1"
 
 dependencies = [
     "nerfstudio" # you may want to consider pinning the version, ie "nerfstudio==0.1.19"
 ]
 
 [tool.setuptools.packages.find]
-include = ["hdr-nerf*"]
+include = ["hdr_nerf*"]
 
 [project.entry-points.'nerfstudio.method_configs']
-my-method = 'hdr_nerf.config:HdrNerf'
+hdr-nerf = 'hdr_nerf.config:HdrNerf'
