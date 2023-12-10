@@ -230,6 +230,16 @@ class HdrNerfField(Field):
     def get_outputs(
         self, ray_samples: RaySamples, density_embedding: Optional[Tensor] = None
     ) -> Dict[FieldHeadNames, Tensor]:
+        # if ray_samples.metadata is None:
+        #     print('ray_samples.metadata is None')
+        # elif 'exposures' not in ray_samples.metadata.keys():
+        #     print('ray_samples.metadata does not contain exposures')
+        # 
+        if ray_samples.metadata is None or 'exposures' not in ray_samples.metadata.keys():
+            exposures = torch.ones(ray_samples.frustums.directions.shape[:-1], device=ray_samples.frustums.directions.device)
+        else:
+            exposures = ray_samples.metadata['exposures']
+
         assert density_embedding is not None
         outputs = {}
         if ray_samples.camera_indices is None:
