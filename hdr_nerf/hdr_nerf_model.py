@@ -312,6 +312,7 @@ class HdrNerfModel(Model):
         ray_samples_list.append(ray_samples)
 
         rgb = self.renderer_rgb(rgb=field_outputs[FieldHeadNames.RGB], weights=weights)
+        pred_rgb_ldr = self.renderer_rgb(rgb=field_outputs[FieldHeadNames.PRED_RGB_LDR], weights=weights)
         with torch.no_grad():
             depth = self.renderer_depth(weights=weights, ray_samples=ray_samples)
         expected_depth = self.renderer_expected_depth(weights=weights, ray_samples=ray_samples)
@@ -319,6 +320,7 @@ class HdrNerfModel(Model):
 
         outputs = {
             "rgb": rgb,
+            "pred_rgb_ldr": pred_rgb_ldr,
             "accumulation": accumulation,
             "depth": depth,
             "expected_depth": expected_depth,
@@ -366,11 +368,12 @@ class HdrNerfModel(Model):
         loss_dict = {}
         image = batch["image"].to(self.device)
         pred_rgb, gt_rgb = self.renderer_rgb.blend_background_for_loss_computation(
-            pred_image=outputs["rgb"],
+            pred_image=outputs["pred_rgb_ldr"],
             pred_accumulation=outputs["accumulation"],
             gt_image=image,
         )
 
+        # todo: unit exposure loss
         loss_dict["rgb_loss"] = self.rgb_loss(gt_rgb, pred_rgb)
         if self.training:
             loss_dict["interlevel_loss"] = self.config.interlevel_loss_mult * interlevel_loss(
@@ -396,6 +399,7 @@ class HdrNerfModel(Model):
         self, outputs: Dict[str, torch.Tensor], batch: Dict[str, torch.Tensor]
     ) -> Tuple[Dict[str, float], Dict[str, torch.Tensor]]:
         gt_rgb = batch["image"].to(self.device)
+        # todo: use correct exposure...
         predicted_rgb = outputs["rgb"]  # Blended with background (black if random background)
         gt_rgb = self.renderer_rgb.blend_background(gt_rgb)
         acc = colormaps.apply_colormap(outputs["accumulation"])

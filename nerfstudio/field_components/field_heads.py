@@ -29,6 +29,8 @@ class FieldHeadNames(Enum):
     """Possible field outputs"""
 
     RGB = "rgb"
+    RGB_HDR = "rgb_hdr"
+    PRED_RGB_LDR = "pred_rgb_ldr"
     SH = "sh"
     DENSITY = "density"
     NORMALS = "normals"

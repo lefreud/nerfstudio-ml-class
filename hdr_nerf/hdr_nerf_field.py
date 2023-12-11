@@ -197,9 +197,21 @@ class HdrNerfField(Field):
             layer_width=hidden_dim_color,
             out_dim=3,
             activation=nn.ReLU(),
-            out_activation=nn.Sigmoid(),
+            out_activation=None, # output log HDR
             implementation=implementation,
         )
+
+        # HDR NeRF, 1 MLP per channel
+        self.crf_mlps = nn.ModuleList([
+            MLP(in_dim=1,
+                num_layers=2,
+                layer_width=128,
+                out_dim=1,
+                activation=nn.ReLU(),
+                out_activation=nn.Sigmoid(),
+                implementation=implementation,
+            ) for _ in range(3)
+        ])
 
     def get_density(self, ray_samples: RaySamples) -> Tuple[Tensor, Tensor]:
         """Computes and returns the densities."""
@@ -236,9 +248,11 @@ class HdrNerfField(Field):
         #     print('ray_samples.metadata does not contain exposures')
         # 
         if ray_samples.metadata is None or 'exposures' not in ray_samples.metadata.keys():
-            exposures = torch.ones(ray_samples.frustums.directions.shape[:-1], device=ray_samples.frustums.directions.device)
+            exposures = torch.ones(ray_samples.frustums.directions.shape[:-1], device=ray_samples.frustums.directions.device)[..., None]
+
         else:
-            exposures = ray_samples.metadata['exposures']
+            exposures = ray_samples.metadata['exposures'].to(ray_samples.frustums.directions.device)
+        exposures = exposures.reshape(-1, 1).clone().detach()
 
         assert density_embedding is not None
         outputs = {}
@@ -306,7 +320,24 @@ class HdrNerfField(Field):
             ],
             dim=-1,
         )
-        rgb = self.mlp_head(h).view(*outputs_shape, -1).to(directions)
-        outputs.update({FieldHeadNames.RGB: rgb})
+        log_rgb_hdr = self.mlp_head(h)
+        log_rgb_hdr_exposed = log_rgb_hdr + torch.log(exposures)
+        
+        pred_ldr = torch.cat([
+            self.crf_mlps[channel](log_rgb_hdr_exposed[..., channel:channel+1]) for channel in range(3)
+        ], dim=-1)
+        
+        pred_ldr = pred_ldr.view(*outputs_shape, -1).to(directions)
+        rgb_hdr = torch.exp(log_rgb_hdr).view(*outputs_shape, -1).to(directions)
+
+        unit_exposure_ldr = torch.clamp((rgb_hdr * 1) ** (1.0 / 2.2), 0, 1)
+        # todo: don't use unit exposure in LDR
+
+        # todo: check if clones and detach are necessary
+        outputs.update({
+            FieldHeadNames.RGB: unit_exposure_ldr.clone().detach(),
+            FieldHeadNames.RGB_HDR: rgb_hdr.clone().detach(),
+            FieldHeadNames.PRED_RGB_LDR: pred_ldr
+        })
 
         return outputs
