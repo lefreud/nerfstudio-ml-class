@@ -12,7 +12,6 @@
 
 3. To train
     ```
-    ns-download-data nerfstudio --capture-name=poster
-    ns-train hdr-nerf --data data/nerfstudio/poster
+    ns-train hdr-nerf --data data/nerfstudio/chair
     ```
 
