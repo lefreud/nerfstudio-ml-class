@@ -29,7 +29,7 @@ def process_split(in_dir, out_dir, split):
         fpath_noext = frame['file_path']
 
         if split == "train":
-            fpath_new = f"{fpath_noext}.png"
+            fpath_new = f"{fpath_noext}"
             frame['file_path'] = fpath_new
             transforms['frames'].append(frame)
 
@@ -43,7 +43,7 @@ def process_split(in_dir, out_dir, split):
 
         elif split == "test":
             for i in range(5):
-                fpath_new = f"{fpath_noext}_{i}.png"
+                fpath_new = f"{fpath_noext}_{i}"
                 frame['file_path'] = fpath_new
                 transforms['frames'].append(frame.copy())
     
