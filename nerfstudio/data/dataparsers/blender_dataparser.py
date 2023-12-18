@@ -42,7 +42,7 @@ class BlenderDataParserConfig(DataParserConfig):
     """target class to instantiate"""
     data: Path = Path("data/blender/lego")
     """Directory specifying location of data."""
-    scale_factor: float = 1.0
+    scale_factor: float = 0.1
     """How much to scale the camera origins by."""
     alpha_color: str = "white"
     """alpha color of background"""

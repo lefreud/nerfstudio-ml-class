@@ -23,6 +23,7 @@ from typing import Dict, List, Literal, Tuple, Type
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from torch.nn import Parameter
 from torchmetrics.functional import structural_similarity_index_measure
 from torchmetrics.image import PeakSignalNoiseRatio
@@ -141,6 +142,10 @@ class HdrNerfModelConfig(ModelConfig):
     """Dimension of the appearance embedding."""
     camera_optimizer: CameraOptimizerConfig = CameraOptimizerConfig(mode="SO3xR3")
     """Config of the camera optimizer to use"""
+
+    # Added
+    unit_exposure_loss_mult: float = 0.5
+    unit_exposure_expected_value: float = 0.5
 
 
 class HdrNerfModel(Model):
@@ -321,6 +326,7 @@ class HdrNerfModel(Model):
         outputs = {
             "rgb": rgb,
             "pred_rgb_ldr": pred_rgb_ldr,
+            "zero_radiance_crf": field_outputs[FieldHeadNames.ZERO_RADIANCE_CRF],
             "accumulation": accumulation,
             "depth": depth,
             "expected_depth": expected_depth,
@@ -371,6 +377,9 @@ class HdrNerfModel(Model):
             pred_image=outputs["pred_rgb_ldr"],
             pred_accumulation=outputs["accumulation"],
             gt_image=image,
+        )
+        loss_dict["unit_exposure_loss"] = self.config.unit_exposure_loss_mult * F.mse_loss(
+            outputs["zero_radiance_crf"], torch.ones_like(outputs["zero_radiance_crf"], requires_grad=False) * self.config.unit_exposure_expected_value
         )
 
         # todo: unit exposure loss

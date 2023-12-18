@@ -328,16 +328,24 @@ class HdrNerfField(Field):
         ], dim=-1)
         
         pred_ldr = pred_ldr.view(*outputs_shape, -1).to(directions)
-        rgb_hdr = torch.exp(log_rgb_hdr).view(*outputs_shape, -1).to(directions)
 
-        unit_exposure_ldr = torch.clamp((rgb_hdr * 1) ** (1.0 / 2.2), 0, 1)
+        zero_radiance_crf = torch.cat([
+            self.crf_mlps[channel](torch.zeros((1, 1), requires_grad=False, device=log_rgb_hdr_exposed.device)) for channel in range(3)
+        ], dim=-1)
+        # expand size
+        zero_radiance_crf = zero_radiance_crf.expand(pred_ldr.shape).to(directions)
+        
+        # rgb_hdr = torch.exp(log_rgb_hdr).view(*outputs_shape, -1).to(directions)
+
+        # unit_exposure_ldr = torch.clamp((rgb_hdr * 1) ** (1.0 / 2.2), 0, 1)
         # todo: don't use unit exposure in LDR
 
         # todo: check if clones and detach are necessary
         outputs.update({
-            FieldHeadNames.RGB: unit_exposure_ldr.clone().detach(),
-            FieldHeadNames.RGB_HDR: rgb_hdr.clone().detach(),
-            FieldHeadNames.PRED_RGB_LDR: pred_ldr
+            FieldHeadNames.RGB: pred_ldr,
+            FieldHeadNames.RGB_HDR: pred_ldr,
+            FieldHeadNames.PRED_RGB_LDR: pred_ldr,
+            FieldHeadNames.ZERO_RADIANCE_CRF: zero_radiance_crf,
         })
 
         return outputs

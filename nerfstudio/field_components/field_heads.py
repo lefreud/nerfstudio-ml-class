@@ -31,6 +31,7 @@ class FieldHeadNames(Enum):
     RGB = "rgb"
     RGB_HDR = "rgb_hdr"
     PRED_RGB_LDR = "pred_rgb_ldr"
+    ZERO_RADIANCE_CRF = "zero_radiance_crf"
     SH = "sh"
     DENSITY = "density"
     NORMALS = "normals"
