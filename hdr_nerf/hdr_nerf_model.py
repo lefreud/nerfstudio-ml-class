@@ -23,7 +23,6 @@ from typing import Dict, List, Literal, Tuple, Type
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 from torch.nn import Parameter
 from torchmetrics.functional import structural_similarity_index_measure
 from torchmetrics.image import PeakSignalNoiseRatio
@@ -122,8 +121,6 @@ class HdrNerfModelConfig(ModelConfig):
     """Predicted normal loss multiplier."""
     use_proposal_weight_anneal: bool = True
     """Whether to use proposal weight annealing."""
-    use_average_appearance_embedding: bool = True
-    """Whether to use average appearance embedding or zeros for inference."""
     proposal_weights_anneal_slope: float = 10.0
     """Slope of the annealing function for the proposal weights."""
     proposal_weights_anneal_max_num_iters: int = 1000
@@ -138,8 +135,6 @@ class HdrNerfModelConfig(ModelConfig):
     """Use gradient scaler where the gradients are lower for points closer to the camera."""
     implementation: Literal["tcnn", "torch"] = "tcnn"
     """Which implementation to use for the model."""
-    appearance_embed_dim: int = 32
-    """Dimension of the appearance embedding."""
     camera_optimizer: CameraOptimizerConfig = CameraOptimizerConfig(mode="SO3xR3")
     """Config of the camera optimizer to use"""
 
@@ -180,8 +175,6 @@ class HdrNerfModel(Model):
             spatial_distortion=scene_contraction,
             num_images=self.num_train_data,
             use_pred_normals=self.config.predict_normals,
-            use_average_appearance_embedding=self.config.use_average_appearance_embedding,
-            appearance_embedding_dim=self.config.appearance_embed_dim,
             implementation=self.config.implementation,
         )
 
@@ -252,7 +245,9 @@ class HdrNerfModel(Model):
 
         # losses
         self.rgb_loss = MSELoss()
+        self.unit_exposure_loss = MSELoss()
         self.step = 0
+
         # metrics
         self.psnr = PeakSignalNoiseRatio(data_range=1.0)
         self.ssim = structural_similarity_index_measure
@@ -378,7 +373,8 @@ class HdrNerfModel(Model):
             pred_accumulation=outputs["accumulation"],
             gt_image=image,
         )
-        loss_dict["unit_exposure_loss"] = self.config.unit_exposure_loss_mult * F.mse_loss(
+
+        loss_dict["unit_exposure_loss"] = self.config.unit_exposure_loss_mult * self.unit_exposure_loss(
             outputs["zero_radiance_crf"], torch.ones_like(outputs["zero_radiance_crf"], requires_grad=False) * self.config.unit_exposure_expected_value
         )
 

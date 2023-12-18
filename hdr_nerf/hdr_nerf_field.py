@@ -58,13 +58,11 @@ class HdrNerfField(Field):
         features_per_level: number of features per level for the hashgrid
         hidden_dim_color: dimension of hidden layers for color network
         hidden_dim_transient: dimension of hidden layers for transient network
-        appearance_embedding_dim: dimension of appearance embedding
         transient_embedding_dim: dimension of transient embedding
         use_transient_embedding: whether to use transient embedding
         use_semantics: whether to use semantic segmentation
         num_semantic_classes: number of semantic classes
         use_pred_normals: whether to use predicted normals
-        use_average_appearance_embedding: whether to use average appearance embedding or zeros for inference
         spatial_distortion: spatial distortion to apply to the scene
     """
 
@@ -86,14 +84,12 @@ class HdrNerfField(Field):
         features_per_level: int = 2,
         hidden_dim_color: int = 64,
         hidden_dim_transient: int = 64,
-        appearance_embedding_dim: int = 32,
         transient_embedding_dim: int = 16,
         use_transient_embedding: bool = False,
         use_semantics: bool = False,
         num_semantic_classes: int = 100,
         pass_semantic_gradients: bool = False,
         use_pred_normals: bool = False,
-        use_average_appearance_embedding: bool = False,
         spatial_distortion: Optional[SpatialDistortion] = None,
         implementation: Literal["tcnn", "torch"] = "tcnn",
     ) -> None:
@@ -108,9 +104,6 @@ class HdrNerfField(Field):
 
         self.spatial_distortion = spatial_distortion
         self.num_images = num_images
-        self.appearance_embedding_dim = appearance_embedding_dim
-        self.embedding_appearance = Embedding(self.num_images, self.appearance_embedding_dim)
-        self.use_average_appearance_embedding = use_average_appearance_embedding
         self.use_transient_embedding = use_transient_embedding
         self.use_semantics = use_semantics
         self.use_pred_normals = use_pred_normals
@@ -192,7 +185,7 @@ class HdrNerfField(Field):
             self.field_head_pred_normals = PredNormalsFieldHead(in_dim=self.mlp_pred_normals.get_out_dim())
 
         self.mlp_head = MLP(
-            in_dim=self.direction_encoding.get_out_dim() + self.geo_feat_dim + self.appearance_embedding_dim,
+            in_dim=self.direction_encoding.get_out_dim() + self.geo_feat_dim,
             num_layers=num_layers_color,
             layer_width=hidden_dim_color,
             out_dim=3,
@@ -265,19 +258,6 @@ class HdrNerfField(Field):
 
         outputs_shape = ray_samples.frustums.directions.shape[:-1]
 
-        # appearance
-        if self.training:
-            embedded_appearance = self.embedding_appearance(camera_indices)
-        else:
-            if self.use_average_appearance_embedding:
-                embedded_appearance = torch.ones(
-                    (*directions.shape[:-1], self.appearance_embedding_dim), device=directions.device
-                ) * self.embedding_appearance.mean(dim=0)
-            else:
-                embedded_appearance = torch.zeros(
-                    (*directions.shape[:-1], self.appearance_embedding_dim), device=directions.device
-                )
-
         # transients
         if self.use_transient_embedding and self.training:
             embedded_transient = self.embedding_transient(camera_indices)
@@ -316,7 +296,6 @@ class HdrNerfField(Field):
             [
                 d,
                 density_embedding.view(-1, self.geo_feat_dim),
-                embedded_appearance.view(-1, self.appearance_embedding_dim),
             ],
             dim=-1,
         )

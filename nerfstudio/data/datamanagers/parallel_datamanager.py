@@ -42,15 +42,15 @@ from nerfstudio.cameras.cameras import CameraType
 from nerfstudio.cameras.rays import RayBundle
 from nerfstudio.data.datamanagers.base_datamanager import (
     DataManager,
-    VanillaDataManagerConfig,
     TDataset,
+    VanillaDataManagerConfig,
     variable_res_collate,
 )
 from nerfstudio.data.dataparsers.base_dataparser import DataparserOutputs
 from nerfstudio.data.pixel_samplers import (
+    PatchPixelSamplerConfig,
     PixelSampler,
     PixelSamplerConfig,
-    PatchPixelSamplerConfig,
 )
 from nerfstudio.data.utils.dataloaders import (
     CacheDataloader,
@@ -164,7 +164,7 @@ class ParallelDataManager(DataManager, Generic[TDataset]):
         self.world_size = world_size
         self.local_rank = local_rank
         self.test_mode = test_mode
-        self.test_split = "test" if test_mode in ["test", "inference"] else "val"
+        self.test_split = "test"
         self.dataparser_config = self.config.dataparser
         if self.config.data is not None:
             self.config.dataparser.data = Path(self.config.data)
